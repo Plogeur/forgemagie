@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mon Simulateur de Forgemagie</title>
+<style>
+  :root{
+    --bg:#14161c; --panel:#1d2029; --panel2:#262a36; --line:#343949; --text:#e8eaf0; --muted:#9097ab;
+    --accent:#f0a030; --ok:#4cc38a; --bad:#ef5b5b; --warn:#e8c14a; --blue:#5aa2f0;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,Segoe UI,Roboto,sans-serif}
+  header{padding:18px 24px;border-bottom:1px solid var(--line);display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
+  header h1{margin:0;font-size:20px;color:var(--accent)}
+  header span{color:var(--muted);font-size:13px}
+  main{display:grid;grid-template-columns:340px 1fr 320px;gap:16px;padding:16px 24px;max-width:1500px;margin:auto}
+  @media(max-width:1100px){main{grid-template-columns:1fr}}
+  section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+  h2{margin:0 0 10px;font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  input,select,button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:7px 10px}
+  input:focus,select:focus{outline:1px solid var(--accent)}
+  button{cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent);color:#1a1200;border-color:var(--accent);font-weight:600}
+  .row{display:flex;gap:8px;margin-bottom:8px;align-items:center}
+  .row>input{flex:1;min-width:0}
+  .results{max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:6px}
+  .results div{padding:7px 10px;border-bottom:1px solid var(--line);cursor:pointer;display:flex;justify-content:space-between;gap:8px}
+  .results div:hover{background:var(--panel2)}
+  .results small{color:var(--muted)}
+  .msg{color:var(--muted);font-size:13px;margin:6px 0}
+  .msg.err{color:var(--bad)}
+  .item-head{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+  .item-head img{width:56px;height:56px;border-radius:8px;background:var(--panel2);object-fit:contain}
+  .item-head h3{margin:0;font-size:18px}
+  .item-head small{color:var(--muted)}
+  .stat{display:grid;grid-template-columns:130px 1fr auto;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
+  .stat .name{font-weight:600}
+  .stat .name small{display:block;color:var(--muted);font-weight:400;font-size:12px}
+  .bar{position:relative;height:14px;background:var(--panel2);border-radius:7px;overflow:visible}
+  .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:7px;background:var(--blue)}
+  .bar i.over{background:var(--bad)}
+  .bar b{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--text);opacity:.7}
+  .val{font-variant-numeric:tabular-nums;text-align:right;min-width:92px}
+  .val.over{color:var(--bad)} .val.exo{color:var(--warn)}
+  .runes{display:flex;gap:4px;grid-column:1/-1;flex-wrap:wrap;padding-bottom:2px}
+  .runes button{padding:3px 8px;font-size:12px}
+  .runes button small{color:var(--muted)}
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+  .kpi{background:var(--panel2);border-radius:8px;padding:8px 10px}
+  .kpi small{display:block;color:var(--muted);font-size:12px}
+  .kpi b{font-size:20px}
+  .log{max-height:420px;overflow:auto;font-size:13px}
+  .log div{padding:5px 0;border-bottom:1px solid var(--line)}
+  .ok{color:var(--ok)} .bad{color:var(--bad)} .warn{color:var(--warn)}
+  .add{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .add select{flex:1;min-width:120px}
+  .add input{width:70px}
+  details{margin-top:12px;color:var(--muted);font-size:13px}
+  details summary{cursor:pointer}
+  label.chk{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  <h1>⚒ Simulateur de Forgemagie</h1>
+  <span>Dofus Unity · poids &amp; puits · données via api.dofusdu.de</span>
+</header>
+
+<main>
+  <!-- LEFT: item picker -->
+  <section>
+    <h2>1. Objet</h2>
+    <div class="row">
+      <input id="q" placeholder="Nom de l'objet (ex: Amulette du Bouftou)" autocomplete="off">
+      <button class="primary" id="btnSearch">Chercher</button>
+    </div>
+    <div id="searchMsg" class="msg"></div>
+    <div class="results" id="results" hidden></div>
+
+    <h2 style="margin-top:18px">Départ</h2>
+    <div class="row">
+      <select id="startMode" style="flex:1">
+        <option value="avg">Jets moyens</option>
+        <option value="min">Jets minimum</option>
+        <option value="max">Jets maximum</option>
+        <option value="zero">Tout à zéro (jets libres)</option>
+      </select>
+      <button id="btnLoad">Appliquer</button>
+    </div>
+    <div class="msg">Ou ajoute tes propres stats manuellement dans le panneau central.</div>
+
+    <h2 style="margin-top:18px">Réglages du modèle</h2>
+    <div class="row"><span style="flex:1">Niveau du forgemage</span><input id="cfgLvl" type="number" min="1" max="200" value="200" style="width:80px;flex:none"></div>
+    <div class="row"><span style="flex:1">Difficulté de base (%)</span><input id="cfgBase" type="number" min="10" max="100" value="85" style="width:80px;flex:none"></div>
+    <div class="row"><span style="flex:1">Part de réussites critiques (%)</span><input id="cfgCrit" type="number" min="0" max="100" value="30" style="width:80px;flex:none"></div>
+    <details>
+      <summary>À propos des probabilités</summary>
+      <p>Ankama ne publie pas les formules exactes. Le simulateur utilise un modèle <b>approximatif</b> : plus la rune est lourde, plus on approche du jet maximum, et plus on dépasse (over-FM) ou ajoute une stat absente (exotique), plus les chances chutent. Ajuste les réglages pour coller à ton expérience.</p>
+    </details>
+  </section>
+
+  <!-- CENTER: item + stats -->
+  <section>
+    <h2>2. Forgemagie</h2>
+    <div id="itemHead" class="item-head" hidden></div>
+    <div class="kpis">
+      <div class="kpi"><small>Puits</small><b id="kPuits">0</b></div>
+      <div class="kpi"><small>Poids total de l'objet</small><b id="kWeight">0</b></div>
+      <div class="kpi"><small>Runes passées</small><b id="kRunes">0</b></div>
+      <div class="kpi"><small>Réussites / échecs</small><b id="kRatio">0 / 0</b></div>
+    </div>
+    <div id="stats"></div>
+    <div class="add">
+      <select id="addStat"></select>
+      <input id="addMin" type="number" placeholder="min" title="Jet minimum">
+      <input id="addMax" type="number" placeholder="max" title="Jet maximum">
+      <button id="btnAdd">+ Stat</button>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button id="btnUndo">↶ Annuler</button>
+      <button id="btnReset">Réinitialiser</button>
+      <label class="chk"><input type="checkbox" id="chkAuto"> Afficher les % sur les boutons</label>
+    </div>
+  </section>
+
+  <!-- RIGHT: log -->
+  <section>
+    <h2>3. Historique</h2>
+    <div class="log" id="log"><div class="msg">Aucune rune passée.</div></div>
+  </section>
+</main>
+
+<script>
+/* ============ DATA ============ */
+// Poids par point de stat (règle de poids). Modifiable.
+const STATS = {
+  'Vitalité':{w:0.25},'Sagesse':{w:3},'Force':{w:1},'Intelligence':{w:1},'Chance':{w:1},'Agilité':{w:1},
+  'Puissance':{w:2},'Initiative':{w:0.1},'Pods':{w:0.25},'Prospection':{w:3},'Coup Critique':{w:10},
+  'Soin':{w:20},'Dommages':{w:20},'Dommages Terre':{w:5},'Dommages Feu':{w:5},'Dommages Eau':{w:5},'Dommages Air':{w:5},
+  'Dommages Pièges':{w:5},'Puissance Pièges':{w:2},'Invocation':{w:30},
+  'PA':{w:100,fixed:true},'PM':{w:90,fixed:true},'Portée':{w:51,fixed:true},
+  '% Résistance Terre':{w:6},'% Résistance Feu':{w:6},'% Résistance Eau':{w:6},'% Résistance Air':{w:6},'% Résistance Neutre':{w:6},
+  'Résistance PA':{w:7},'Résistance PM':{w:7},'Retrait PA':{w:7},'Retrait PM':{w:7},'Esquive PA':{w:7},'Esquive PM':{w:7},
+  'Fuite':{w:4},'Tacle':{w:4},
+};
+// Runes : [nom court, quantité apportée, poids]
+const RUNES = {
+  'Vitalité':[['Vi',3,1],['Pa Vi',10,3],['Ra Vi',30,8]],
+  'Sagesse':[['Sa',1,3],['Pa Sa',3,9],['Ra Sa',10,30]],
+  'Force':[['Fo',1,1],['Pa Fo',3,3],['Ra Fo',10,10]],
+  'Intelligence':[['Ine',1,1],['Pa Ine',3,3],['Ra Ine',10,10]],
+  'Chance':[['Cha',1,1],['Pa Cha',3,3],['Ra Cha',10,10]],
+  'Agilité':[['Age',1,1],['Pa Age',3,3],['Ra Age',10,10]],
+  'Puissance':[['Pui',1,2],['Pa Pui',3,6],['Ra Pui',10,20]],
+  'Initiative':[['Ini',10,1],['Pa Ini',30,3],['Ra Ini',100,10]],
+  'Pods':[['Pod',10,3],['Pa Pod',30,8],['Ra Pod',100,25]],
+  'Prospection':[['Prospe',1,3]],'Coup Critique':[['Cri',1,10]],
+  'Soin':[['So',1,20]],'Dommages':[['Do',1,20]],
+  'Dommages Terre':[['Do Terre',1,5]],'Dommages Feu':[['Do Feu',1,5]],'Dommages Eau':[['Do Eau',1,5]],'Dommages Air':[['Do Air',1,5]],
+  'Dommages Pièges':[['Do Pi',1,5]],'Puissance Pièges':[['Pui Pi',1,2]],'Invocation':[['Invo',1,30]],
+  'PA':[['Ga Pa',1,100]],'PM':[['Ga Pme',1,90]],'Portée':[['Po',1,51]],
+  '% Résistance Terre':[['Ré Per Terre',1,6]],'% Résistance Feu':[['Ré Per Feu',1,6]],'% Résistance Eau':[['Ré Per Eau',1,6]],
+  '% Résistance Air':[['Ré Per Air',1,6]],'% Résistance Neutre':[['Ré Per Neutre',1,6]],
+  'Résistance PA':[['Ré Pa',1,7]],'Résistance PM':[['Ré Pme',1,7]],'Retrait PA':[['Ret Pa',1,7]],'Retrait PM':[['Ret Pme',1,7]],
+  'Esquive PA':[['Ré PA',1,7]],'Esquive PM':[['Ré PM',1,7]],'Fuite':[['Fui',1,4]],'Tacle':[['Tac',1,4]],
+};
+// Correspondance nom d'effet de l'API -> clé interne
+function mapEffect(name){
+  if(!name) return null;
+  const n = name.toLowerCase().replace(/\s+/g,' ').trim();
+  const direct = Object.keys(STATS).find(k=>k.toLowerCase()===n);
+  if(direct) return direct;
+  const rules = [
+    [/^pa$|points? d'action/,'PA'],[/^pm$|points? de mouvement/,'PM'],[/^po$|portée/,'Portée'],
+    [/résistance.*pa|ré.*pa/,'Résistance PA'],[/résistance.*pm/,'Résistance PM'],
+    [/retrait pa/,'Retrait PA'],[/retrait pm/,'Retrait PM'],[/esquive pa/,'Esquive PA'],[/esquive pm/,'Esquive PM'],
+    [/% ?résistance.*terre/,'% Résistance Terre'],[/% ?résistance.*feu/,'% Résistance Feu'],
+    [/% ?résistance.*eau/,'% Résistance Eau'],[/% ?résistance.*air/,'% Résistance Air'],[/% ?résistance.*neutre/,'% Résistance Neutre'],
+    [/dommages.*terre/,'Dommages Terre'],[/dommages.*feu/,'Dommages Feu'],[/dommages.*eau/,'Dommages Eau'],[/dommages.*air/,'Dommages Air'],
+    [/dommages.*piège/,'Dommages Pièges'],[/puissance.*piège/,'Puissance Pièges'],
+    [/^dommages/,'Dommages'],[/^soin/,'Soin'],[/critique/,'Coup Critique'],[/invocation/,'Invocation'],
+    [/prospection/,'Prospection'],[/initiative/,'Initiative'],[/pods/,'Pods'],[/puissance/,'Puissance'],[/vitalité/,'Vitalité'],
+    [/sagesse/,'Sagesse'],[/force/,'Force'],[/intelligence/,'Intelligence'],[/chance/,'Chance'],[/agilité/,'Agilité'],
+    [/fuite/,'Fuite'],[/tacle/,'Tacle'],
+  ];
+  for(const [re,key] of rules) if(re.test(n)) return key;
+  return null;
+}
+
+/* ============ STATE ============ */
+let item = null;            // {name, level, type, img}
+let stats = [];             // {key, cur, min, max}
+let puits = 0;
+let history = [];           // snapshots for undo
+let logEntries = [];
+let totals = {runes:0, ok:0, ko:0};
+
+const $ = id => document.getElementById(id);
+const cfg = () => ({
+  lvl: +$('cfgLvl').value||200,
+  base: (+$('cfgBase').value||85)/100,
+  crit: (+$('cfgCrit').value||30)/100,
+});
+const wOf = k => (STATS[k]||{w:1}).w;
+const itemWeight = () => stats.reduce((s,x)=>s+Math.max(0,x.cur)*wOf(x.key),0);
+
+/* ============ API ============ */
+const API_BASES = ['https://api.dofusdu.de/dofus3/v1/fr','https://api.dofusdu.de/dofus3/fr'];
+async function api(path){
+  let lastErr;
+  for(const b of API_BASES){
+    try{
+      const r = await fetch(b+path);
+      if(r.ok) return await r.json();
+      lastErr = new Error('HTTP '+r.status);
+    }catch(e){ lastErr = e; }
+  }
+  throw lastErr;
+}
+async function searchItems(){
+  const q = $('q').value.trim();
+  const box = $('results'), msg = $('searchMsg');
+  if(!q){ msg.textContent='Saisis un nom.'; return; }
+  msg.className='msg'; msg.textContent='Recherche…'; box.hidden=true;
+  try{
+    const data = await api('/items/equipment/search?query='+encodeURIComponent(q)+'&limit=25');
+    const list = Array.isArray(data)?data:(data.items||[]);
+    if(!list.length){ msg.textContent='Aucun résultat.'; return; }
+    msg.textContent=list.length+' résultat(s)';
+    box.innerHTML=''; 
+    list.forEach(it=>{
+      const d=document.createElement('div');
+      d.innerHTML=`<span>${esc(it.name)}</span><small>${esc((it.type&&it.type.name)||'')} · niv ${it.level??'?'}</small>`;
+      d.onclick=()=>loadItem(it.ankama_id);
+      box.appendChild(d);
+    });
+    box.hidden=false;
+  }catch(e){
+    msg.className='msg err';
+    msg.textContent="Impossible de joindre l'API ("+e.message+"). Tu peux ajouter les stats à la main.";
+  }
+}
+async function loadItem(id){
+  $('searchMsg').className='msg'; $('searchMsg').textContent='Chargement…';
+  try{
+    const it = await api('/items/equipment/'+id);
+    item = {
+      id,
+      name: it.name, level: it.level, type: it.type&&it.type.name,
+      img: it.image_urls && (it.image_urls.icon||it.image_urls.sd||it.image_urls.hq)
+    };
+    rawEffects = (it.effects||[]).map(e=>{
+      const key = mapEffect(e.type && e.type.name);
+      const min = e.int_minimum, max = (e.int_maximum && e.int_maximum>=e.int_minimum) ? e.int_maximum : e.int_minimum;
+      return {key, min, max};
+    }).filter(e=>e.key && e.max>0);
+    $('results').hidden=true; $('searchMsg').textContent='';
+    applyStart();
+  }catch(e){
+    $('searchMsg').className='msg err';
+    $('searchMsg').textContent="Impossible de charger l'objet ("+e.message+").";
+  }
+}
+let rawEffects = [];
+function applyStart(){
+  const mode = $('startMode').value;
+  stats = rawEffects.map(e=>({
+    key:e.key, min:e.min, max:e.max,
+    cur: mode==='min'?e.min : mode==='max'?e.max : mode==='zero'?0 : Math.round((e.min+e.max)/2)
+  }));
+  resetRun();
+  render();
+}
+
+/* ============ MODEL ============ */
+function runeChance(st, rune, qty){
+  const c = cfg();
+  const [name, amount, weight] = rune;
+  const newVal = st.cur + amount;
+  const isExo = st.max<=0;
+  const ratio = st.max>0 ? newVal/st.max : 2;
+  let p = c.base;
+  // lourdeur de l'objet + de la rune
+  p *= 1/(1+ (weight/ (60 + c.lvl/2)) );
+  p *= Math.max(0.12, 1 - 0.35*(itemWeight()/Math.max(200, (item?item.level:100)*8)));
+  // approche du max
+  if(ratio>0.8) p *= Math.max(0.35, 1-(ratio-0.8)*2.2);
+  if(newVal>st.max && st.max>0) p = Math.min(p, 0.03 + 0.04*(weight>=10?1.5:1)); // over-FM
+  if(isExo) p = Math.min(p, 0.02);                                              // exotique
+  if(STATS[st.key] && STATS[st.key].fixed && newVal>st.max) p = Math.min(p,0.01); // PA/PM/PO ne dépassent pas
+  // une rune plus grosse passe mieux près du max
+  return Math.max(0.005, Math.min(0.98, p));
+}
+function loseWeight(R){
+  const lost=[];
+  // d'abord le puits
+  const t = Math.min(puits, R); puits-=t; R-=t;
+  let guard=200;
+  while(R>0 && guard--){
+    const cand = stats.filter(s=>s.cur>0);
+    if(!cand.length) break;
+    const s = cand[Math.floor(Math.random()*cand.length)];
+    const w = wOf(s.key);
+    // on retire un "cran" cohérent avec la plus petite rune de la stat
+    const step = (RUNES[s.key]&&RUNES[s.key][0][1]) || 1;
+    const dec = Math.min(step, s.cur);
+    const cost = dec*w;
+    s.cur -= dec;
+    lost.push(`-${dec} ${s.key}`);
+    if(cost>R){ puits += cost-R; R=0; } else R-=cost;
+  }
+  return lost;
+}
+function snapshot(){ return JSON.stringify({stats,puits,totals,logEntries}); }
+function restore(s){ const o=JSON.parse(s); stats=o.stats; puits=o.puits; totals=o.totals; logEntries=o.logEntries; }
+
+function applyRune(statIdx, runeIdx){
+  const st = stats[statIdx]; const rune = RUNES[st.key][runeIdx];
+  const [name, amount, weight] = rune;
+  history.push(snapshot());
+  const p = runeChance(st, rune);
+  const r = Math.random();
+  const c = cfg();
+  const wasOver = st.cur+amount>st.max;
+  let txt, cls;
+  totals.runes++;
+  if(r<p){
+    totals.ok++;
+    st.cur += amount;
+    if(Math.random()<c.crit){
+      txt=`Rune ${name} : <b>réussite critique</b> (+${amount} ${st.key})`; cls='ok';
+    }else{
+      const lost = loseWeight(weight);
+      txt=`Rune ${name} : réussite neutre (+${amount} ${st.key})`+(lost.length?` · ${lost.join(', ')}`:'')+(wasOver?' · over':''); cls='warn';
+    }
+  }else{
+    totals.ko++;
+    const lost = loseWeight(weight);
+    txt=`Rune ${name} : <b>échec</b>`+(lost.length?` · ${lost.join(', ')}`:' (poids absorbé par le puits)'); cls='bad';
+  }
+  logEntries.unshift({txt,cls,p});
+  render();
+}
+function resetRun(){
+  puits=0; history=[]; logEntries=[]; totals={runes:0,ok:0,ko:0};
+}
+
+/* ============ RENDER ============ */
+function esc(s){ return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function render(){
+  const head = $('itemHead');
+  if(item){
+    head.hidden=false;
+    head.innerHTML=(item.img?`<img src="${esc(item.img)}" alt="">`:'')+`<div><h3>${esc(item.name)}</h3><small>${esc(item.type||'')} · niveau ${item.level??'?'}</small></div>`;
+  }else head.hidden=true;
+
+  $('kPuits').textContent=Math.round(puits*100)/100;
+  $('kWeight').textContent=Math.round(itemWeight()*10)/10;
+  $('kRunes').textContent=totals.runes;
+  $('kRatio').textContent=totals.ok+' / '+totals.ko;
+
+  const wrap=$('stats'); wrap.innerHTML='';
+  if(!stats.length){ wrap.innerHTML='<div class="msg">Cherche un objet à gauche, ou ajoute une stat ci-dessous.</div>'; }
+  stats.forEach((s,i)=>{
+    const over = s.max>0 && s.cur>s.max, exo = s.max<=0 && s.cur>0;
+    const pct = s.max>0 ? Math.min(100, Math.max(0,s.cur)/s.max*100) : (s.cur>0?100:0);
+    const div=document.createElement('div'); div.className='stat';
+    const showP = $('chkAuto').checked;
+    const btns=(RUNES[s.key]||[]).map((r,ri)=>{
+      const pp = showP? ` <small>${Math.round(runeChance(s,r)*100)}%</small>`:'';
+      return `<button data-i="${i}" data-r="${ri}" title="+${r[1]} ${s.key} · poids ${r[2]}">${esc(r[0])}${pp}</button>`;
+    }).join('');
+    div.innerHTML=`
+      <div class="name">${esc(s.key)}<small>${s.max>0?`${s.min}–${s.max}`:'hors jet'} · poids ${wOf(s.key)}/pt</small></div>
+      <div class="bar"><i class="${over?'over':''}" style="width:${pct}%"></i></div>
+      <div class="val ${over?'over':exo?'exo':''}">${s.cur}${s.max>0?` / ${s.max}`:''}${over?' (over)':exo?' (exo)':''}</div>
+      <div class="runes">${btns||'<span class="msg">Pas de rune pour cette stat</span>'}
+        <button data-del="${i}" title="Retirer cette stat" style="margin-left:auto">✕</button></div>`;
+    wrap.appendChild(div);
+  });
+  wrap.querySelectorAll('button[data-r]').forEach(b=>b.onclick=()=>applyRune(+b.dataset.i,+b.dataset.r));
+  wrap.querySelectorAll('button[data-del]').forEach(b=>b.onclick=()=>{ stats.splice(+b.dataset.del,1); render(); });
+
+  const log=$('log');
+  log.innerHTML = logEntries.length
+    ? logEntries.map(e=>`<div class="${e.cls}">${e.txt} <small style="color:var(--muted)">(${Math.round(e.p*100)}%)</small></div>`).join('')
+    : '<div class="msg">Aucune rune passée.</div>';
+}
+
+/* ============ EVENTS ============ */
+$('btnSearch').onclick=searchItems;
+$('q').addEventListener('keydown',e=>{ if(e.key==='Enter') searchItems(); });
+$('btnLoad').onclick=()=>{ if(rawEffects.length) applyStart(); };
+$('chkAuto').onchange=render;
+$('btnUndo').onclick=()=>{ if(history.length){ restore(history.pop()); render(); } };
+$('btnReset').onclick=()=>{ if(rawEffects.length) applyStart(); else { stats.forEach(s=>s.cur=Math.round((s.min+s.max)/2)); resetRun(); render(); } };
+$('btnAdd').onclick=()=>{
+  const key=$('addStat').value;
+  const min=+$('addMin').value||0, max=+$('addMax').value||0;
+  if(stats.some(s=>s.key===key)) return;
+  stats.push({key,min,max,cur:max>0?Math.round((min+max)/2):0});
+  render();
+};
+// stat selector
+$('addStat').innerHTML=Object.keys(STATS).map(k=>`<option>${esc(k)}</option>`).join('');
+render();
+</script>
+</body>
+</html>
