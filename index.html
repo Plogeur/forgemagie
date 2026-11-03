@@ -3,26 +3,28 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mon Simulateur de Forgemagie</title>
+<title>Simulateur de Forgemagie</title>
 <style>
   :root{
     --bg:#14161c; --panel:#1d2029; --panel2:#262a36; --line:#343949; --text:#e8eaf0; --muted:#9097ab;
-    --accent:#f0a030; --ok:#4cc38a; --bad:#ef5b5b; --warn:#e8c14a; --blue:#5aa2f0;
+    --accent:#f0a030; --sc:#4cc38a; --sn:#e8c14a; --ec:#ef5b5b; --blue:#5aa2f0;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,Segoe UI,Roboto,sans-serif}
   header{padding:18px 24px;border-bottom:1px solid var(--line);display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
   header h1{margin:0;font-size:20px;color:var(--accent)}
   header span{color:var(--muted);font-size:13px}
-  main{display:grid;grid-template-columns:340px 1fr 320px;gap:16px;padding:16px 24px;max-width:1500px;margin:auto}
-  @media(max-width:1100px){main{grid-template-columns:1fr}}
-  section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
-  h2{margin:0 0 10px;font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  main{display:grid;grid-template-columns:320px 1fr 340px;gap:16px;padding:16px 24px;max-width:1600px;margin:auto}
+  @media(max-width:1150px){main{grid-template-columns:1fr}}
+  section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+  h2{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
   input,select,button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:7px 10px}
   input:focus,select:focus{outline:1px solid var(--accent)}
   button{cursor:pointer}
-  button:hover{border-color:var(--accent)}
+  button:hover:not(:disabled){border-color:var(--accent)}
+  button:disabled{opacity:.4;cursor:not-allowed}
   button.primary{background:var(--accent);color:#1a1200;border-color:var(--accent);font-weight:600}
+  button.on{border-color:var(--accent);color:var(--accent)}
   .row{display:flex;gap:8px;margin-bottom:8px;align-items:center}
   .row>input{flex:1;min-width:0}
   .results{max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:6px}
@@ -30,382 +32,752 @@
   .results div:hover{background:var(--panel2)}
   .results small{color:var(--muted)}
   .msg{color:var(--muted);font-size:13px;margin:6px 0}
-  .msg.err{color:var(--bad)}
+  .msg.err{color:var(--ec)}
   .item-head{display:flex;gap:12px;align-items:center;margin-bottom:12px}
   .item-head img{width:56px;height:56px;border-radius:8px;background:var(--panel2);object-fit:contain}
   .item-head h3{margin:0;font-size:18px}
   .item-head small{color:var(--muted)}
-  .stat{display:grid;grid-template-columns:130px 1fr auto;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
-  .stat .name{font-weight:600}
-  .stat .name small{display:block;color:var(--muted);font-weight:400;font-size:12px}
-  .bar{position:relative;height:14px;background:var(--panel2);border-radius:7px;overflow:visible}
-  .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:7px;background:var(--blue)}
-  .bar i.over{background:var(--bad)}
-  .bar b{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--text);opacity:.7}
-  .val{font-variant-numeric:tabular-nums;text-align:right;min-width:92px}
-  .val.over{color:var(--bad)} .val.exo{color:var(--warn)}
-  .runes{display:flex;gap:4px;grid-column:1/-1;flex-wrap:wrap;padding-bottom:2px}
-  .runes button{padding:3px 8px;font-size:12px}
-  .runes button small{color:var(--muted)}
-  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+  @media(max-width:700px){.kpis{grid-template-columns:1fr 1fr}}
   .kpi{background:var(--panel2);border-radius:8px;padding:8px 10px}
   .kpi small{display:block;color:var(--muted);font-size:12px}
-  .kpi b{font-size:20px}
-  .log{max-height:420px;overflow:auto;font-size:13px}
-  .log div{padding:5px 0;border-bottom:1px solid var(--line)}
-  .ok{color:var(--ok)} .bad{color:var(--bad)} .warn{color:var(--warn)}
-  .add{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
-  .add select{flex:1;min-width:120px}
-  .add input{width:70px}
+  .kpi b{font-size:20px;font-variant-numeric:tabular-nums}
+  .kpi input{width:100%;font-size:18px;font-weight:700;padding:0;border:0;background:transparent}
+  .kpi.warn b{color:var(--ec)}
+  .stat{padding:8px 0;border-bottom:1px solid var(--line)}
+  .stat .top{display:grid;grid-template-columns:200px 1fr 150px;gap:10px;align-items:center}
+  @media(max-width:600px){.stat .top{grid-template-columns:1fr;gap:6px}}
+  .stat input.vin{width:78px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600;padding:4px 6px}
+  .stat input.mm{width:54px;text-align:center;font-size:12px;padding:1px 3px;margin:0 2px}
+  .stat .val small{color:var(--muted);margin-left:4px}
+  .stat .name{font-weight:600}
+  .stat .name small{display:block;color:var(--muted);font-weight:400;font-size:12px}
+  .bar{position:relative;height:12px;background:var(--panel2);border-radius:6px}
+  .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:6px;background:var(--blue)}
+  .bar i.over{background:var(--ec)} .bar i.exo{background:var(--sn)}
+  .val{font-variant-numeric:tabular-nums;text-align:right}
+  .val.over{color:var(--ec)} .val.exo{color:var(--sn)} .val.neg{color:var(--blue)}
+  .runes{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;align-items:stretch}
+  .rune{padding:4px 9px;font-size:13px;min-width:62px;text-align:left;display:flex;flex-direction:column;gap:3px}
+  .rune .rn{font-weight:600}
+  .rune .rn small{color:var(--muted);font-weight:400}
+  .odds{display:flex;height:5px;border-radius:3px;overflow:hidden;background:var(--panel)}
+  .odds i{display:block;height:100%}
+  .odds .sc{background:var(--sc)} .odds .sn{background:var(--sn)} .odds .ec{background:var(--ec)}
+  .rune .num{font-size:11px;color:var(--muted);white-space:nowrap}
+  .del{margin-left:auto;padding:4px 9px;font-size:12px;color:var(--muted);align-self:flex-start}
+  .stat .name .wt{display:block}
+  .legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin:2px 0 10px;flex-wrap:wrap}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+  .sc-c{color:var(--sc)} .sn-c{color:var(--sn)} .ec-c{color:var(--ec)}
+  .log{max-height:560px;overflow:auto;font-size:13px}
+  .log div.h{padding:6px 0;border-bottom:1px solid var(--line)}
+  .badge{display:inline-block;min-width:26px;text-align:center;font-weight:700;font-size:11px;border-radius:4px;padding:1px 5px;color:#10131a;margin-right:6px}
+  .badge.SC{background:var(--sc)} .badge.SN{background:var(--sn)} .badge.EC{background:var(--ec)}
+  .log small{color:var(--muted)}
+  .add{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+  .add select{flex:1;min-width:140px}
   details{margin-top:12px;color:var(--muted);font-size:13px}
   details summary{cursor:pointer}
-  label.chk{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:13px}
+  details p{margin:8px 0}
+  table.w{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+  table.w td{padding:3px 2px;border-bottom:1px solid var(--line)}
+  table.w input{width:54px;padding:2px 4px;font-size:12px}
+  .seg{display:flex}
+  .seg button{border-radius:0;flex:1}
+  .seg button:first-child{border-radius:6px 0 0 6px} .seg button:last-child{border-radius:0 6px 6px 0}
+  .tiny{font-size:12px;color:var(--muted)}
+  a{color:var(--accent)}
+  .doc{max-width:1600px;margin:0 auto;padding:0 24px 16px}
+  .doc section{padding:20px 24px;line-height:1.6}
+  .doc h2{font-size:15px;color:var(--text);text-transform:none;letter-spacing:0;margin:0 0 4px}
+  .doc h3{margin:22px 0 6px;font-size:14px;color:var(--accent)}
+  .doc p,.doc li{color:#cfd3df;font-size:14px}
+  .doc ul,.doc ol{padding-left:20px;margin:6px 0}
+  .doc code{background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font-size:13px}
+  .doc .formula{background:var(--panel2);border-left:3px solid var(--accent);border-radius:4px;padding:8px 12px;margin:8px 0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;overflow-x:auto;white-space:pre}
+  .doc .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+  .doc .tw{overflow-x:auto}
+  .doc table{border-collapse:collapse;font-size:13px;margin:8px 0;width:100%}
+  .doc th,.doc td{border-bottom:1px solid var(--line);padding:4px 8px;text-align:right}
+  .doc th:first-child,.doc td:first-child{text-align:left}
+  .doc th{color:var(--muted);font-weight:600}
+  .doc .note{color:var(--muted);font-size:13px}
+  footer{max-width:1600px;margin:0 auto;padding:6px 24px 28px;color:var(--muted);font-size:13px}
 </style>
 </head>
 <body>
 <header>
   <h1>⚒ Simulateur de Forgemagie</h1>
-  <span>Dofus Unity · poids &amp; puits · données via api.dofusdu.de</span>
+  <span>Dofus Unity · chances SC / SN / EC · reliquat · exos · calcul basé sur <a href="https://dofocus.fr/forgemagie" target="_blank" rel="noopener">DoFocus</a>, site de référence</span>
 </header>
 
 <main>
-  <!-- LEFT: item picker -->
+  <!-- LEFT -->
   <section>
     <h2>1. Objet</h2>
     <div class="row">
-      <input id="q" placeholder="Nom de l'objet (ex: Amulette du Bouftou)" autocomplete="off">
-      <button class="primary" id="btnSearch">Chercher</button>
+      <select id="example" style="flex:1" aria-label="Objet exemple"></select>
+      <button class="primary" id="btnExample">Charger</button>
     </div>
-    <div id="searchMsg" class="msg"></div>
-    <div class="results" id="results" hidden></div>
+    <div class="msg">Objets d'exemple (jets inventés, à ajuster). Tu peux aussi construire ton objet avec « + Ligne ».</div>
 
-    <h2 style="margin-top:18px">Départ</h2>
+    <h2 style="margin-top:18px">Jets de départ</h2>
     <div class="row">
       <select id="startMode" style="flex:1">
-        <option value="avg">Jets moyens</option>
-        <option value="min">Jets minimum</option>
-        <option value="max">Jets maximum</option>
-        <option value="zero">Tout à zéro (jets libres)</option>
+        <option value="avg">Jet moyen</option>
+        <option value="min">Jet minimum</option>
+        <option value="max">Jet maximum</option>
+        <option value="random">Jet aléatoire</option>
       </select>
       <button id="btnLoad">Appliquer</button>
     </div>
-    <div class="msg">Ou ajoute tes propres stats manuellement dans le panneau central.</div>
+    <div class="row"><span style="flex:1">Niveau de l'objet</span><input id="lvl" type="number" min="1" max="200" value="200" style="width:80px;flex:none"></div>
 
-    <h2 style="margin-top:18px">Réglages du modèle</h2>
-    <div class="row"><span style="flex:1">Niveau du forgemage</span><input id="cfgLvl" type="number" min="1" max="200" value="200" style="width:80px;flex:none"></div>
-    <div class="row"><span style="flex:1">Difficulté de base (%)</span><input id="cfgBase" type="number" min="10" max="100" value="85" style="width:80px;flex:none"></div>
-    <div class="row"><span style="flex:1">Part de réussites critiques (%)</span><input id="cfgCrit" type="number" min="0" max="100" value="30" style="width:80px;flex:none"></div>
-    <details>
-      <summary>À propos des probabilités</summary>
-      <p>Ankama ne publie pas les formules exactes. Le simulateur utilise un modèle <b>approximatif</b> : plus la rune est lourde, plus on approche du jet maximum, et plus on dépasse (over-FM) ou ajoute une stat absente (exotique), plus les chances chutent. Ajuste les réglages pour coller à ton expérience.</p>
-    </details>
+    <h2 style="margin-top:18px">Affichage</h2>
+    <div class="seg">
+      <button id="modeSimple">Simple</button>
+      <button id="modeAdv" class="on">Avancé</button>
+    </div>
+
+    <p class="tiny" style="margin-top:14px">Le détail du calcul est expliqué <a href="#calcul">plus bas</a>.</p>
   </section>
 
-  <!-- CENTER: item + stats -->
+  <!-- CENTER -->
   <section>
     <h2>2. Forgemagie</h2>
     <div id="itemHead" class="item-head" hidden></div>
     <div class="kpis">
-      <div class="kpi"><small>Puits</small><b id="kPuits">0</b></div>
-      <div class="kpi"><small>Poids total de l'objet</small><b id="kWeight">0</b></div>
+      <div class="kpi"><small>Reliquat</small><input id="kReliquat" type="number" min="0" step="any" value="0" aria-label="Reliquat"></div>
+      <div class="kpi" id="kLoadBox"><small>Over + exo (max 101)</small><b id="kLoad">0</b></div>
       <div class="kpi"><small>Runes passées</small><b id="kRunes">0</b></div>
-      <div class="kpi"><small>Réussites / échecs</small><b id="kRatio">0 / 0</b></div>
+      <div class="kpi"><small>SC / SN / EC</small><b id="kRatio">0 / 0 / 0</b></div>
+    </div>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--sc)"></i>SC succès critique</span>
+      <span><i class="dot" style="background:var(--sn)"></i>SN succès neutre</span>
+      <span><i class="dot" style="background:var(--ec)"></i>EC échec critique</span>
     </div>
     <div id="stats"></div>
     <div class="add">
-      <select id="addStat"></select>
-      <input id="addMin" type="number" placeholder="min" title="Jet minimum">
-      <input id="addMax" type="number" placeholder="max" title="Jet maximum">
-      <button id="btnAdd">+ Stat</button>
+      <select id="addStat" aria-label="Stat à ajouter"></select>
+      <input id="addMin" type="number" placeholder="min" title="Jet minimum" style="width:70px">
+      <input id="addMax" type="number" placeholder="max" title="Jet maximum" style="width:70px">
+      <button id="btnAddLine">+ Ligne</button>
+      <button id="btnAdd">+ Exo</button>
     </div>
     <div class="row" style="margin-top:14px">
-      <button id="btnUndo">↶ Annuler</button>
-      <button id="btnReset">Réinitialiser</button>
-      <label class="chk"><input type="checkbox" id="chkAuto"> Afficher les % sur les boutons</label>
+      <button id="btnUndo" title="Raccourci : flèche gauche">↶ Annuler</button>
+      <button id="btnReset">Recommencer</button>
     </div>
   </section>
 
-  <!-- RIGHT: log -->
+  <!-- RIGHT -->
   <section>
     <h2>3. Historique</h2>
-    <div class="log" id="log"><div class="msg">Aucune rune passée.</div></div>
+    <div class="row">
+      <select id="order" style="flex:1">
+        <option value="top">Dernier en haut</option>
+        <option value="bottom">Dernier en bas</option>
+      </select>
+      <button id="btnClearLog">Vider</button>
+    </div>
+    <div class="log" id="log"><div class="msg">Clique sur une rune pour forgemager.</div></div>
   </section>
 </main>
 
+<div class="doc" id="calcul">
+<section>
+  <h2>Comment sont calculées les chances</h2>
+  <p class="note">Le calcul reprend celui du simulateur <a href="https://dofocus.fr/forgemagie" target="_blank" rel="noopener">DoFocus</a>, notre site de référence pour la forgemagie et le brisage. Ankama ne publie pas la formule : il s'agit du modèle établi par DoFocus. Pour la vérifier ou la comparer, rends-toi directement sur <a href="https://dofocus.fr/forgemagie" target="_blank" rel="noopener">dofocus.fr/forgemagie</a>.</p>
+
+  <h3>1. Les trois issues d'une rune</h3>
+  <ul>
+    <li><b class="sc-c">SC – succès critique</b> : la rune passe (+ sa valeur sur la ligne) et <u>rien</u> n'est retiré ailleurs.</li>
+    <li><b class="sn-c">SN – succès neutre</b> : la rune passe, mais un poids égal à celui de la rune est retiré sur l'objet.</li>
+    <li><b class="ec-c">EC – échec critique</b> : la rune ne passe pas, et ce même poids est retiré sur l'objet.</li>
+  </ul>
+  <p>Les trois pourcentages font toujours 100 %. Ils sont affichés sur chaque bouton avant de cliquer.</p>
+
+  <h3>2. Le poids des runes</h3>
+  <p>Chaque stat a un <b>poids par point</b> : 1 pour Force/Intelligence/Chance/Agilité, 3 pour Sagesse, 0,2 pour Vitalité, 100 pour un PA… Le poids d'une rune est ce poids par point multiplié par sa valeur (une Ra Fo +10 pèse 10, une Pa Vi +15 pèse 3). Le poids de la rune sert à savoir <i>combien retirer</i> sur un SN ou un EC.</p>
+
+  <div class="cols">
+  <div>
+  <h3>3. Difficulté d'une ligne normale</h3>
+  <p>Pour une stat qui existe déjà sur l'objet (avec un jet min–max), on calcule une <b>difficulté</b> :</p>
+  <div class="formula">difficulté = 5
+           + 12 × max(0, runes déjà passées − 14)
+           + 60 × qualité¹²
+           + 45        si on dépasse 80 % du jet
+           + 65 + 4 × poids d'over   si la rune met en over
+           − 20 × max(0, 1,1 − qualité)   si l'objet est niv. &lt; 170</div>
+  <ul>
+    <li><b>Position</b> : (valeur après rune − min) / (max − min). À partir de 80 %, le « palier » ajoute +45.</li>
+    <li><b>Runes déjà passées</b> : valeur actuelle de la ligne ÷ valeur de la rune. Au-delà de 14, la difficulté monte vite : il faut passer à une rune plus grosse (Pa, puis Ra).</li>
+    <li><b>Qualité</b> : part du jet maximum atteinte par le <i>reste</i> de l'objet (pondérée par le poids des lignes), entre 0 et 1. Un objet déjà bien rempli est beaucoup plus dur à forgemager : le terme 60 × qualité¹² devient énorme près de 1.</li>
+    <li><b>Over</b> : dépasser le jet maximum de la ligne. Le malus dépend du poids d'over créé.</li>
+    <li><b>Exo PA / PM</b> : si l'objet porte déjà un exo PA ou PM, le reste de l'objet compte comme parfait (qualité = 1) et le SC s'effondre.</li>
+  </ul>
+  </div>
+  <div>
+  <h3>4. De la difficulté aux pourcentages</h3>
+  <div class="formula">SC = max(2, (100 − difficulté) / 2)
+SN (normal) = si diff ≤ 100 : min(50, 100 − SC)
+              sinon : max(15, 50 − 0,375 × (diff − 100))
+SN (over)   = max(5, 40 − 0,375 × (diff − 100))
+EC = 100 − SC − SN</div>
+  <div class="tw"><table>
+    <tr><th>Difficulté</th><th>SC</th><th>SN</th><th>EC</th><th>SC (over)</th><th>SN (over)</th><th>EC (over)</th></tr>
+    <tr><td>10</td><td>45</td><td>50</td><td>5</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>50</td><td>25</td><td>50</td><td>25</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>70</td><td>15</td><td>50</td><td>35</td><td>15</td><td>51,3</td><td>33,8</td></tr>
+    <tr><td>90</td><td>5</td><td>50</td><td>45</td><td>5</td><td>43,8</td><td>51,3</td></tr>
+    <tr><td>110</td><td>2</td><td>46,3</td><td>51,8</td><td>2</td><td>36,3</td><td>61,8</td></tr>
+    <tr><td>130</td><td>2</td><td>38,8</td><td>59,3</td><td>2</td><td>28,8</td><td>69,3</td></tr>
+  </table></div>
+  <p class="note">Le SC ne descend jamais sous 2 % sur une ligne normale.</p>
+  </div>
+  </div>
+
+  <h3>5. Les exos (stat absente de l'objet)</h3>
+  <p>Pour une stat ajoutée en exo, les chances dépendent du <b>poids total de la ligne après la rune</b> (valeur × poids par point). <b>PA, PM et Portée</b> ont des chances fixes : <b>1 % SC / 0 % SN / 99 % EC</b>. Pour les autres exos :</p>
+  <div class="tw"><table>
+    <tr><th>Poids total de la ligne</th><th>≤ 2</th><th>5</th><th>10</th><th>15</th><th>20</th><th>24</th><th>≥ 25</th></tr>
+    <tr><td>SC</td><td>4,4</td><td>3,7</td><td>2,6</td><td>1,5</td><td>1</td><td>1</td><td>1</td></tr>
+    <tr><td>SN</td><td>52,6</td><td>44,5</td><td>31</td><td>17,5</td><td>8,8</td><td>1,8</td><td>0</td></tr>
+    <tr><td>EC</td><td>43</td><td>51,8</td><td>66,4</td><td>81</td><td>90,2</td><td>97,2</td><td>99</td></tr>
+  </table></div>
+  <p class="note">Ces chances d'exo sont marquées « estimation » : elles viennent d'une courbe ajustée, pas d'une formule exacte.</p>
+
+  <h3>6. Les interdits</h3>
+  <ul>
+    <li><b>Plafond de ligne</b> : une ligne ne peut pas dépasser <code>max(jet max, ⌊101 ÷ poids par point⌋)</code>.</li>
+    <li><b>Plafond d'objet</b> : le poids total d'over + exos sur l'objet ne peut pas dépasser <b>101</b>. Le bouton de la rune est alors désactivé.</li>
+  </ul>
+
+  <h3>7. Que devient le poids retiré (SN et EC) ?</h3>
+  <p>Le poids de la rune est retiré dans cet ordre, jusqu'à ce qu'il soit épuisé :</p>
+  <ol>
+    <li>Les lignes <b>en over ou en exo</b> (dans un ordre aléatoire), avec une probabilité qui dépend du poids de la rune par rapport au poids de la ligne.</li>
+    <li>Le <b>reliquat</b> (puits) : le poids stocké, qui absorbe les pertes sans toucher aux stats.</li>
+    <li>La ligne de la rune elle-même (une chance sur trois), puis les <b>autres lignes</b> tirées au hasard, plus souvent les lignes légères que les lignes lourdes.</li>
+    <li>En dernier recours, la ligne runée.</li>
+  </ol>
+  <p>Quand le retrait enlève un peu plus que le poids demandé (on retire des points entiers), l'excédent est ajouté au <b>reliquat</b>. Une ligne négative ne pèse que la moitié de son poids.</p>
+
+  <h3>Limites du simulateur</h3>
+  <ul>
+    <li>Les poids des runes viennent des tables publiques (<a href="https://dofus-portals.fr/forgemagie/" target="_blank" rel="noopener">dofus-portals</a>, <a href="https://www.dofustool.com/poids-runes-dofus/" target="_blank" rel="noopener">dofustool</a>) ; DoFocus les charge depuis ses propres données, de petits écarts sont possibles.</li>
+    <li>Les objets proposés sont des exemples : modifie directement le jet, le min et le max de chaque ligne, ou ajoute les vraies lignes avec « + Ligne ».</li>
+    <li>En cas de doute sur un résultat, <b>DoFocus fait foi</b> : <a href="https://dofocus.fr/forgemagie" target="_blank" rel="noopener">dofocus.fr/forgemagie</a>.</li>
+  </ul>
+</section>
+</div>
+<footer>Calcul des chances basé sur le simulateur de <a href="https://dofocus.fr" target="_blank" rel="noopener">DoFocus</a> (site de référence). Projet non officiel, non affilié à Ankama ni à DoFocus. Dofus est une marque d'Ankama.</footer>
+
 <script>
-/* ============ DATA ============ */
-// Poids par point de stat (règle de poids). Modifiable.
-const STATS = {
-  'Vitalité':{w:0.25},'Sagesse':{w:3},'Force':{w:1},'Intelligence':{w:1},'Chance':{w:1},'Agilité':{w:1},
-  'Puissance':{w:2},'Initiative':{w:0.1},'Pods':{w:0.25},'Prospection':{w:3},'Coup Critique':{w:10},
-  'Soin':{w:20},'Dommages':{w:20},'Dommages Terre':{w:5},'Dommages Feu':{w:5},'Dommages Eau':{w:5},'Dommages Air':{w:5},
-  'Dommages Pièges':{w:5},'Puissance Pièges':{w:2},'Invocation':{w:30},
-  'PA':{w:100,fixed:true},'PM':{w:90,fixed:true},'Portée':{w:51,fixed:true},
-  '% Résistance Terre':{w:6},'% Résistance Feu':{w:6},'% Résistance Eau':{w:6},'% Résistance Air':{w:6},'% Résistance Neutre':{w:6},
-  'Résistance PA':{w:7},'Résistance PM':{w:7},'Retrait PA':{w:7},'Retrait PM':{w:7},'Esquive PA':{w:7},'Esquive PM':{w:7},
-  'Fuite':{w:4},'Tacle':{w:4},
-};
-// Runes : [nom court, quantité apportée, poids]
+/* =====================================================================
+   DONNÉES : runes  [nom, valeur apportée, poids]
+   Les runes Pa valent 3 fois la rune de base, les Ra 10 fois.
+   Le poids par point d'une stat = poids / valeur de sa plus petite rune.
+   ===================================================================== */
+// rr(noms [base, Pa, Ra], valeur de la rune de base, poids par point)
+const rr = (names,u,w) => names.map((nm,i)=>{ const m=[1,3,10][i]; return [nm, m*u, Math.round(m*u*w*1000)/1000]; });
 const RUNES = {
-  'Vitalité':[['Vi',3,1],['Pa Vi',10,3],['Ra Vi',30,8]],
-  'Sagesse':[['Sa',1,3],['Pa Sa',3,9],['Ra Sa',10,30]],
-  'Force':[['Fo',1,1],['Pa Fo',3,3],['Ra Fo',10,10]],
-  'Intelligence':[['Ine',1,1],['Pa Ine',3,3],['Ra Ine',10,10]],
-  'Chance':[['Cha',1,1],['Pa Cha',3,3],['Ra Cha',10,10]],
-  'Agilité':[['Age',1,1],['Pa Age',3,3],['Ra Age',10,10]],
-  'Puissance':[['Pui',1,2],['Pa Pui',3,6],['Ra Pui',10,20]],
-  'Initiative':[['Ini',10,1],['Pa Ini',30,3],['Ra Ini',100,10]],
-  'Pods':[['Pod',10,3],['Pa Pod',30,8],['Ra Pod',100,25]],
-  'Prospection':[['Prospe',1,3]],'Coup Critique':[['Cri',1,10]],
-  'Soin':[['So',1,20]],'Dommages':[['Do',1,20]],
-  'Dommages Terre':[['Do Terre',1,5]],'Dommages Feu':[['Do Feu',1,5]],'Dommages Eau':[['Do Eau',1,5]],'Dommages Air':[['Do Air',1,5]],
-  'Dommages Pièges':[['Do Pi',1,5]],'Puissance Pièges':[['Pui Pi',1,2]],'Invocation':[['Invo',1,30]],
-  'PA':[['Ga Pa',1,100]],'PM':[['Ga Pme',1,90]],'Portée':[['Po',1,51]],
-  '% Résistance Terre':[['Ré Per Terre',1,6]],'% Résistance Feu':[['Ré Per Feu',1,6]],'% Résistance Eau':[['Ré Per Eau',1,6]],
-  '% Résistance Air':[['Ré Per Air',1,6]],'% Résistance Neutre':[['Ré Per Neutre',1,6]],
-  'Résistance PA':[['Ré Pa',1,7]],'Résistance PM':[['Ré Pme',1,7]],'Retrait PA':[['Ret Pa',1,7]],'Retrait PM':[['Ret Pme',1,7]],
-  'Esquive PA':[['Ré PA',1,7]],'Esquive PM':[['Ré PM',1,7]],'Fuite':[['Fui',1,4]],'Tacle':[['Tac',1,4]],
+  // caractéristiques
+  'Vitalité':rr(['Vi','Pa Vi','Ra Vi'],5,0.2),
+  'Sagesse':rr(['Sa','Pa Sa','Ra Sa'],1,3),
+  'Force':rr(['Fo','Pa Fo','Ra Fo'],1,1),
+  'Intelligence':rr(['Ine','Pa Ine','Ra Ine'],1,1),
+  'Chance':rr(['Cha','Pa Cha','Ra Cha'],1,1),
+  'Agilité':rr(['Age','Pa Age','Ra Age'],1,1),
+  'Puissance':rr(['Pui','Pa Pui','Ra Pui'],1,2),
+  'Initiative':rr(['Ini','Pa Ini','Ra Ini'],10,0.1),
+  'Pods':rr(['Pod','Pa Pod','Ra Pod'],10,0.25),
+  'Prospection':rr(['Prospe','Pa Prospe'],1,3),
+  'Coup Critique':rr(['Cri'],1,10),
+  'Soin':rr(['So','Pa So'],1,10),
+  'Invocation':rr(['Invo'],1,30),
+  // dommages
+  'Dommages':rr(['Do'],1,20),
+  'Dommages Terre':rr(['Do Terre','Pa Do Terre'],1,5),
+  'Dommages Feu':rr(['Do Feu','Pa Do Feu'],1,5),
+  'Dommages Eau':rr(['Do Eau','Pa Do Eau'],1,5),
+  'Dommages Air':rr(['Do Air','Pa Do Air'],1,5),
+  'Dommages Neutre':rr(['Do Neutre','Pa Do Neutre'],1,5),
+  'Dommages Critiques':rr(['Do Cri','Pa Do Cri'],1,5),
+  'Dommages Poussée':rr(['Do Pou','Pa Do Pou'],1,5),
+  'Dommages Pièges':rr(['Do Pi','Pa Do Pi'],1,5),
+  'Dommages Renvoyés':rr(['Do Ren'],1,10),
+  'Puissance Pièges':rr(['Per Pi','Pa Per Pi','Ra Per Pi'],1,2),
+  '% Dommages Armes':rr(['Do Per Ar'],1,15),
+  '% Dommages Distance':rr(['Do Per Di'],1,15),
+  '% Dommages Mêlée':rr(['Do Per Mé'],1,15),
+  '% Dommages Sorts':rr(['Do Per So'],1,15),
+  // points
+  'PA':rr(['Ga Pa'],1,100),
+  'PM':rr(['Ga Pme'],1,90),
+  'Portée':rr(['Po'],1,51),
+  // résistances
+  '% Résistance Terre':rr(['Ré Per Terre'],1,6),
+  '% Résistance Feu':rr(['Ré Per Feu'],1,6),
+  '% Résistance Eau':rr(['Ré Per Eau'],1,6),
+  '% Résistance Air':rr(['Ré Per Air'],1,6),
+  '% Résistance Neutre':rr(['Ré Per Neutre'],1,6),
+  '% Résistance Distance':rr(['Ré Per Di'],1,15),
+  '% Résistance Mêlée':rr(['Ré Per Mé'],1,15),
+  'Résistance Terre':rr(['Ré Terre','Pa Ré Terre'],1,2),
+  'Résistance Feu':rr(['Ré Feu','Pa Ré Feu'],1,2),
+  'Résistance Eau':rr(['Ré Eau','Pa Ré Eau'],1,2),
+  'Résistance Air':rr(['Ré Air','Pa Ré Air'],1,2),
+  'Résistance Neutre':rr(['Ré Neutre','Pa Ré Neutre'],1,2),
+  'Résistance Critiques':rr(['Ré Cri','Pa Ré Cri'],1,2),
+  'Résistance Poussée':rr(['Ré Pou','Pa Ré Pou'],1,2),
+  // esquive / retrait / fuite / tacle
+  'Esquive PA':rr(['Ré Pa','Pa Ré Pa'],1,7),
+  'Esquive PM':rr(['Ré Pme','Pa Ré Pme'],1,7),
+  'Retrait PA':rr(['Ret Pa','Pa Ret Pa'],1,7),
+  'Retrait PM':rr(['Ret Pme','Pa Ret Pme'],1,7),
+  'Fuite':rr(['Fui','Pa Fui'],1,4),
+  'Tacle':rr(['Tac','Pa Tac'],1,4),
 };
-// Correspondance nom d'effet de l'API -> clé interne
-function mapEffect(name){
-  if(!name) return null;
-  const n = name.toLowerCase().replace(/\s+/g,' ').trim();
-  const direct = Object.keys(STATS).find(k=>k.toLowerCase()===n);
-  if(direct) return direct;
-  const rules = [
-    [/^pa$|points? d'action/,'PA'],[/^pm$|points? de mouvement/,'PM'],[/^po$|portée/,'Portée'],
-    [/résistance.*pa|ré.*pa/,'Résistance PA'],[/résistance.*pm/,'Résistance PM'],
-    [/retrait pa/,'Retrait PA'],[/retrait pm/,'Retrait PM'],[/esquive pa/,'Esquive PA'],[/esquive pm/,'Esquive PM'],
-    [/% ?résistance.*terre/,'% Résistance Terre'],[/% ?résistance.*feu/,'% Résistance Feu'],
-    [/% ?résistance.*eau/,'% Résistance Eau'],[/% ?résistance.*air/,'% Résistance Air'],[/% ?résistance.*neutre/,'% Résistance Neutre'],
-    [/dommages.*terre/,'Dommages Terre'],[/dommages.*feu/,'Dommages Feu'],[/dommages.*eau/,'Dommages Eau'],[/dommages.*air/,'Dommages Air'],
-    [/dommages.*piège/,'Dommages Pièges'],[/puissance.*piège/,'Puissance Pièges'],
-    [/^dommages/,'Dommages'],[/^soin/,'Soin'],[/critique/,'Coup Critique'],[/invocation/,'Invocation'],
-    [/prospection/,'Prospection'],[/initiative/,'Initiative'],[/pods/,'Pods'],[/puissance/,'Puissance'],[/vitalité/,'Vitalité'],
-    [/sagesse/,'Sagesse'],[/force/,'Force'],[/intelligence/,'Intelligence'],[/chance/,'Chance'],[/agilité/,'Agilité'],
-    [/fuite/,'Fuite'],[/tacle/,'Tacle'],
+
+// poids par point d'une stat (null si aucune rune connue)
+const perPoint = k => RUNES[k] && RUNES[k][0] ? RUNES[k][0][2]/RUNES[k][0][1] : null;
+
+/* =====================================================================
+   MOTEUR  (porté du simulateur DoFocus)
+   ligne  : { key, name, min, max, value, weight }   min/max = null pour un exo
+   rune   : { key, value, weight }
+   ===================================================================== */
+const EPS = 1e-9;
+const ITEM_CAP = 101;        // poids max d'over + exo sur un objet
+const LOW_LEVEL = 170;       // en dessous : forgemagie plus facile
+const STEP_AT = 0.8;         // palier des 80 % du jet
+const NEG_HALF = 0.5;        // une ligne négative coûte moitié moins
+const PAPM_QUALITY = 1;      // un exo PA/PM compte le reste de l'objet comme parfait
+const TINY_SHARE = 1/60;     // part de la ligne runée dans le tirage pondéré
+const SELF_SHARE = 1/3;      // chance de retirer sur la ligne runée elle-même
+const FIXED_EXO = new Set(['PA','PM','Portée']);  // exos à chances fixes (1 / 0 / 99)
+const PAPM = new Set(['PA','PM']);
+
+const ranged   = l => Number.isFinite(l?.min) && Number.isFinite(l?.max);
+const weighted = l => Number.isFinite(l?.weight) && l.weight > 0;
+const r2 = x => Math.round(x*100)/100;
+const bounds = l => [Math.min(l.min,l.max), Math.max(l.min,l.max)];
+
+// qualité moyenne du reste de l'objet (0..1), hors ligne `skip`
+function restQuality(lines, skip){
+  let num=0, den=0;
+  lines.forEach((l,i)=>{
+    if(i===skip || !ranged(l) || !weighted(l)) return;
+    const hi = bounds(l)[1];
+    if(hi<0) return;
+    num += l.weight*Math.min(Math.max(0,l.value),hi);
+    den += l.weight*hi;
+  });
+  return den>0 ? num/den : 0;
+}
+// difficulté (termes détaillés + total)
+function difficulty({position=0, over=false, overWeight=0, ratio=0, quality=0, level=200, step=true}){
+  const terms = [
+    ['base', 5],
+    ['ratio', 12*Math.max(0, ratio-14)],
+    ['quality', 60*quality**12],
   ];
-  for(const [re,key] of rules) if(re.test(n)) return key;
-  return null;
+  if(over) terms.push(['over', 65+4*Math.max(0,overWeight)]);
+  else if(step && position >= STEP_AT-EPS) terms.push(['step', 45]);
+  if(level < LOW_LEVEL) terms.push(['lowlevel', -20*Math.max(0, 1.1-quality)]);
+  return { value: terms.reduce((s,t)=>s+t[1],0), terms };
+}
+// difficulté -> chances SC / SN / EC (en %)
+function splitOdds(d, over=false){
+  const sc = Math.max(2,(100-d)/2);
+  let sn = over ? Math.max(5, 40-.375*(d-100))
+                : d<=100 ? Math.min(50, 100-sc) : Math.max(15, 50-.375*(d-100));
+  sn = Math.min(Math.max(sn,0), 100-sc);
+  return { sc, sn, ec: 100-sc-sn };
+}
+// chances d'un exo
+function exoOdds(key, totalWeight){
+  if(FIXED_EXO.has(key)) return { sc:1, sn:0, ec:99, estimated:false };
+  let n = 0;
+  if(totalWeight<=2) n = 57;
+  else if(totalWeight<=15) n = 57-(totalWeight-2)*38/13;
+  else if(totalWeight<25) n = 19-(totalWeight-15)*1.9;
+  const sc = Math.max(1,.077*n), sn = .923*n;
+  return { sc, sn, ec: 100-sc-sn, estimated:true };
+}
+// valeur max autorisée sur une ligne
+function lineCap(line, w){
+  const n = Math.floor(ITEM_CAP/w+EPS);
+  return ranged(line) ? Math.max(bounds(line)[1], n) : n;
+}
+// poids d'over + exo présents sur l'objet
+function overLoad(lines){
+  return lines.reduce((t,l)=>{
+    if(!weighted(l) || !(l.value>0)) return t;
+    return ranged(l) ? t+Math.max(0,l.value-bounds(l)[1])*l.weight : t+l.value*l.weight;
+  },0);
 }
 
-/* ============ STATE ============ */
-let item = null;            // {name, level, type, img}
-let stats = [];             // {key, cur, min, max}
-let puits = 0;
-let history = [];           // snapshots for undo
-let logEntries = [];
-let totals = {runes:0, ok:0, ko:0};
+// chances d'une rune sur l'objet : { sc, sn, ec, regime, ... } ou { blocked }
+function computeOdds(item, rune){
+  const lines = item.lines;
+  const idx = lines.findIndex(l=>l.key===rune.key);
+  const line = idx>=0 ? lines[idx] : null;
+  const w = rune.weight/rune.value;
+  const cur = line ? line.value : 0;
+  const cap = lineCap(line || {min:null,max:null}, w);
+  if(cur+rune.value > cap) return { blocked:'line-cap', limit:cap };
+
+  const after = idx>=0
+    ? lines.map((l,i)=>i===idx ? {...l, value:cur+rune.value} : l)
+    : [...lines, {key:rune.key, value:rune.value, min:null, max:null, weight:w}];
+  if(overLoad(after) > ITEM_CAP+EPS) return { blocked:'item-cap', limit:cap, load:r2(overLoad(lines)) };
+
+  const d = rune.value;
+  const q = restQuality(lines, idx);
+  if(!line || !ranged(line)) return { ...exoOdds(rune.key,(cur+d)*w), regime:'exo', quality:q, gain:d, limit:cap };
+
+  const [lo,hi] = bounds(line);
+  const over = cur+d > hi, fixed = hi===lo, half = cur+d < 0;
+  const position = fixed ? 1 : (cur+d-lo)/(hi-lo);
+  const exoPa = lines.some(l=>PAPM.has(l.key) && !ranged(l) && l.value>0);
+  const quality = exoPa ? PAPM_QUALITY : q;
+  const overWeight = over ? (cur+d-hi)*w : 0;
+  const ratio = cur/rune.value;
+  const diff = difficulty({position, over, overWeight, ratio, quality, level:item.level, step:!fixed});
+  const regime = over ? 'over' : fixed ? 'repass' : position>=STEP_AT-EPS ? 'step' : 'normal';
+  return { ...splitOdds(diff.value, over), regime, difficulty:diff.value, terms:diff.terms,
+           position, quality, gain:d, limit:cap, overWeight, ratio, half, exoPa };
+}
+
+// probabilité de prélever sur une ligne
+const pickProb = x => Math.min(1, .75*Math.max(0,x)**.85);
+// tirage pondéré d'une ligne parmi `idxs`
+function weightedPick(idxs, runeWeight, lines, rng, tinyIdx=-1){
+  const a = idxs.map(i=>Math.min(1, runeWeight/lines[i].weight) * (i===tinyIdx ? TINY_SHARE : 1));
+  let o = rng()*a.reduce((s,x)=>s+x,0);
+  for(let i=0;i<idxs.length;i++){ o -= a[i]; if(o<0) return idxs[i]; }
+  return idxs[idxs.length-1];
+}
+function shuffled(arr, rng){
+  const n=[...arr];
+  for(let r=n.length-1;r>0;r--){ const i=Math.floor(rng()*(r+1)); [n[r],n[i]]=[n[i],n[r]]; }
+  return n;
+}
+
+// retire `runeWeight` de poids sur l'objet ; renvoie le nouveau reliquat
+function loseWeight(lines, t, runeWeight, reliquat, rng, {failure=false}={}){
+  const changes = new Map();
+  const take = (i,n)=>{ lines[i] = {...lines[i], value:lines[i].value-n}; changes.set(i,(changes.get(i)||0)-n); };
+  const touchable = i => i!==t || (failure && lines[i].value>0);
+  const loaded = i => weighted(lines[i]) && (ranged(lines[i]) ? lines[i].value>bounds(lines[i])[1] : lines[i].value>0);
+  let f = runeWeight, r = reliquat;
+  const tryTake = (i, share)=>{
+    const x = lines[i], g = x.weight*(x.value<0 ? NEG_HALF : 1);
+    if(rng() >= pickProb(runeWeight/g)*share) return;
+    const avail = x.value>0 ? x.value : x.value-bounds(x)[0];
+    const n = Math.min(avail, Math.max(1, Math.ceil(f/g-EPS)));
+    take(i,n); f -= n*g;
+  };
+
+  // 1. lignes en over / exo
+  for(const i of shuffled(lines.map((_,i)=>i).filter(i=>i!==t && loaded(i)), rng)){
+    if(f<=EPS) break;
+    tryTake(i,1);
+  }
+  // 2. reliquat
+  if(f>EPS && r>0){ const v=Math.min(r,f); r-=v; f-=v; }
+  // 3. la ligne runée elle-même, puis tirage pondéré sur les autres
+  if(f>EPS && lines[t] && touchable(t) && loaded(t)) tryTake(t, SELF_SHARE);
+  while(f>EPS){
+    const c = lines.map((_,i)=>i).filter(i=>touchable(i) && ranged(lines[i]) && weighted(lines[i]) && lines[i].value>0);
+    if(!c.length) break;
+    const i = weightedPick(c, runeWeight, lines, rng, t);
+    const x = lines[i];
+    const g = Math.min(x.value, Math.max(1, Math.ceil(f/x.weight-EPS)));
+    const n = g===1 ? 1 : 1+Math.floor(rng()*g);
+    take(i,n); f -= n*x.weight;
+  }
+  // 4. dernier recours : la ligne runée
+  const h = lines[t];
+  if(f>EPS && h && weighted(h) && h.value>0){
+    const v = Math.min(h.value, Math.max(1, Math.ceil(f/h.weight-EPS)));
+    take(t,v); f -= v*h.weight;
+  }
+  if(f < -EPS) r += -f;     // poids retiré en trop -> reliquat
+  return { lines, reliquat:r2(Math.max(0,r)), changes };
+}
+
+// applique une rune : renvoie le nouvel état + l'issue
+function applyRune(state, rune, name, rng=Math.random){
+  const odds = computeOdds(state.item, rune);
+  if(odds.blocked) return { ...state, outcome:null, odds, changes:[] };
+  const roll = rng()*100;
+  const outcome = roll<odds.sc ? 'SC' : roll<odds.sc+odds.sn ? 'SN' : 'EC';
+  const lines = state.item.lines.map(l=>({...l}));
+  let idx = lines.findIndex(l=>l.key===rune.key);
+  const changes = new Map();
+  if(outcome!=='EC'){
+    if(idx<0){ lines.push({key:rune.key, name:rune.key, value:0, min:null, max:null, weight:rune.weight/rune.value}); idx=lines.length-1; }
+    lines[idx] = {...lines[idx], value:lines[idx].value+rune.value};
+    changes.set(idx, rune.value);
+  }
+  let reliquat = state.reliquat;
+  if(outcome!=='SC'){
+    const before = idx>=0 ? state.item.lines[idx] : null;
+    const f = rune.weight*(before && before.value+rune.value<0 ? NEG_HALF : 1);
+    const p = loseWeight(lines, idx, f, reliquat, rng, {failure: outcome==='EC'});
+    reliquat = p.reliquat;
+    for(const [i,v] of p.changes) changes.set(i,(changes.get(i)||0)+v);
+  }
+  return {
+    item:{...state.item, lines}, reliquat, outcome, odds,
+    reliquatDelta:r2(reliquat-state.reliquat),
+    changes:[...changes].filter(([,d])=>d).map(([i,d])=>({key:lines[i].key, name:lines[i].name, delta:d})),
+  };
+}
+
+/* =====================================================================
+   ÉTAT
+   ===================================================================== */
+let itemInfo = null;           // { name, level, type, img }
+let rawLines = [];             // jets de l'objet chargé : { key, name, min, max }
+let state = { item:{level:200, lines:[]}, reliquat:0 };
+let undoStack = [];
+let log = [];
+let counts = { n:0, SC:0, SN:0, EC:0 };
+let advanced = true;
 
 const $ = id => document.getElementById(id);
-const cfg = () => ({
-  lvl: +$('cfgLvl').value||200,
-  base: (+$('cfgBase').value||85)/100,
-  crit: (+$('cfgCrit').value||30)/100,
-});
-const wOf = k => (STATS[k]||{w:1}).w;
-const itemWeight = () => stats.reduce((s,x)=>s+Math.max(0,x.cur)*wOf(x.key),0);
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtPct = x => x>=10||x===0 ? Math.round(x) : Math.round(x*10)/10;
+const lvlVal = () => Math.min(200, Math.max(1, +$('lvl').value||200));
 
-/* ============ API ============ */
-const API_BASES = ['https://api.dofusdu.de/dofus3/v1/fr','https://api.dofusdu.de/dofus3/fr'];
-async function api(path){
-  let lastErr;
-  for(const b of API_BASES){
-    try{
-      const r = await fetch(b+path);
-      if(r.ok) return await r.json();
-      lastErr = new Error('HTTP '+r.status);
-    }catch(e){ lastErr = e; }
-  }
-  throw lastErr;
+/* =====================================================================
+   OBJETS EXEMPLES (jets inventés, modifiables)  [clé, min, max]
+   ===================================================================== */
+const EXAMPLES = {
+  'Amulette (niv. 200)': { level:200, type:'Amulette', lines:[
+    ['PA',1,1],['Vitalité',301,400],['Force',41,60],['Intelligence',41,60],['Sagesse',21,30],['Puissance',31,40],['Dommages',6,10],['% Résistance Feu',11,15]] },
+  'Coiffe (niv. 200)': { level:200, type:'Chapeau', lines:[
+    ['Vitalité',401,500],['Sagesse',31,40],['Agilité',41,50],['Chance',41,50],['Initiative',301,400],['% Résistance Terre',11,15],['% Résistance Eau',11,15]] },
+  'Bottes (niv. 180)': { level:180, type:'Bottes', lines:[
+    ['PM',1,1],['Vitalité',251,300],['Force',31,40],['Agilité',31,40],['Coup Critique',3,5],['Esquive PA',3,5],['Prospection',11,15]] },
+  'Anneau (niv. 160)': { level:160, type:'Anneau', lines:[
+    ['Vitalité',151,200],['Force',21,30],['Chance',21,30],['Puissance',11,20],['Dommages Terre',3,6],['Tacle',6,10]] },
+};
+function loadExample(){
+  const ex = EXAMPLES[$('example').value]; if(!ex) return;
+  itemInfo = { name:$('example').value.replace(/ \(.*\)/,'')+' (exemple)', level:ex.level, type:ex.type };
+  rawLines = ex.lines.map(([key,min,max])=>({key, name:key, min, max}));
+  $('lvl').value = ex.level;
+  startItem();
 }
-async function searchItems(){
-  const q = $('q').value.trim();
-  const box = $('results'), msg = $('searchMsg');
-  if(!q){ msg.textContent='Saisis un nom.'; return; }
-  msg.className='msg'; msg.textContent='Recherche…'; box.hidden=true;
-  try{
-    const data = await api('/items/equipment/search?query='+encodeURIComponent(q)+'&limit=25');
-    const list = Array.isArray(data)?data:(data.items||[]);
-    if(!list.length){ msg.textContent='Aucun résultat.'; return; }
-    msg.textContent=list.length+' résultat(s)';
-    box.innerHTML=''; 
-    list.forEach(it=>{
-      const d=document.createElement('div');
-      d.innerHTML=`<span>${esc(it.name)}</span><small>${esc((it.type&&it.type.name)||'')} · niv ${it.level??'?'}</small>`;
-      d.onclick=()=>loadItem(it.ankama_id);
-      box.appendChild(d);
-    });
-    box.hidden=false;
-  }catch(e){
-    msg.className='msg err';
-    msg.textContent="Impossible de joindre l'API ("+e.message+"). Tu peux ajouter les stats à la main.";
-  }
+function pickValue(min,max,mode){
+  if(mode==='min') return min;
+  if(mode==='max') return max;
+  if(mode==='random') return min+Math.floor(Math.random()*(max-min+1));
+  return Math.round((min+max)/2);
 }
-async function loadItem(id){
-  $('searchMsg').className='msg'; $('searchMsg').textContent='Chargement…';
-  try{
-    const it = await api('/items/equipment/'+id);
-    item = {
-      id,
-      name: it.name, level: it.level, type: it.type&&it.type.name,
-      img: it.image_urls && (it.image_urls.icon||it.image_urls.sd||it.image_urls.hq)
-    };
-    rawEffects = (it.effects||[]).map(e=>{
-      const key = mapEffect(e.type && e.type.name);
-      const min = e.int_minimum, max = (e.int_maximum && e.int_maximum>=e.int_minimum) ? e.int_maximum : e.int_minimum;
-      return {key, min, max};
-    }).filter(e=>e.key && e.max>0);
-    $('results').hidden=true; $('searchMsg').textContent='';
-    applyStart();
-  }catch(e){
-    $('searchMsg').className='msg err';
-    $('searchMsg').textContent="Impossible de charger l'objet ("+e.message+").";
-  }
-}
-let rawEffects = [];
-function applyStart(){
+// (ré)initialise l'objet à partir des jets chargés
+function startItem(){
   const mode = $('startMode').value;
-  stats = rawEffects.map(e=>({
-    key:e.key, min:e.min, max:e.max,
-    cur: mode==='min'?e.min : mode==='max'?e.max : mode==='zero'?0 : Math.round((e.min+e.max)/2)
-  }));
-  resetRun();
+  state = {
+    item:{ level:lvlVal(), lines: rawLines.map(l=>({
+      key:l.key, name:l.name, min:l.min, max:l.max, value:pickValue(l.min,l.max,mode), weight:perPoint(l.key)
+    })) },
+    reliquat:0
+  };
+  undoStack=[]; log=[]; counts={n:0,SC:0,SN:0,EC:0};
   render();
 }
 
-/* ============ MODEL ============ */
-function runeChance(st, rune, qty){
-  const c = cfg();
-  const [name, amount, weight] = rune;
-  const newVal = st.cur + amount;
-  const isExo = st.max<=0;
-  const ratio = st.max>0 ? newVal/st.max : 2;
-  let p = c.base;
-  // lourdeur de l'objet + de la rune
-  p *= 1/(1+ (weight/ (60 + c.lvl/2)) );
-  p *= Math.max(0.12, 1 - 0.35*(itemWeight()/Math.max(200, (item?item.level:100)*8)));
-  // approche du max
-  if(ratio>0.8) p *= Math.max(0.35, 1-(ratio-0.8)*2.2);
-  if(newVal>st.max && st.max>0) p = Math.min(p, 0.03 + 0.04*(weight>=10?1.5:1)); // over-FM
-  if(isExo) p = Math.min(p, 0.02);                                              // exotique
-  if(STATS[st.key] && STATS[st.key].fixed && newVal>st.max) p = Math.min(p,0.01); // PA/PM/PO ne dépassent pas
-  // une rune plus grosse passe mieux près du max
-  return Math.max(0.005, Math.min(0.98, p));
-}
-function loseWeight(R){
-  const lost=[];
-  // d'abord le puits
-  const t = Math.min(puits, R); puits-=t; R-=t;
-  let guard=200;
-  while(R>0 && guard--){
-    const cand = stats.filter(s=>s.cur>0);
-    if(!cand.length) break;
-    const s = cand[Math.floor(Math.random()*cand.length)];
-    const w = wOf(s.key);
-    // on retire un "cran" cohérent avec la plus petite rune de la stat
-    const step = (RUNES[s.key]&&RUNES[s.key][0][1]) || 1;
-    const dec = Math.min(step, s.cur);
-    const cost = dec*w;
-    s.cur -= dec;
-    lost.push(`-${dec} ${s.key}`);
-    if(cost>R){ puits += cost-R; R=0; } else R-=cost;
-  }
-  return lost;
-}
-function snapshot(){ return JSON.stringify({stats,puits,totals,logEntries}); }
-function restore(s){ const o=JSON.parse(s); stats=o.stats; puits=o.puits; totals=o.totals; logEntries=o.logEntries; }
-
-function applyRune(statIdx, runeIdx){
-  const st = stats[statIdx]; const rune = RUNES[st.key][runeIdx];
-  const [name, amount, weight] = rune;
-  history.push(snapshot());
-  const p = runeChance(st, rune);
-  const r = Math.random();
-  const c = cfg();
-  const wasOver = st.cur+amount>st.max;
-  let txt, cls;
-  totals.runes++;
-  if(r<p){
-    totals.ok++;
-    st.cur += amount;
-    if(Math.random()<c.crit){
-      txt=`Rune ${name} : <b>réussite critique</b> (+${amount} ${st.key})`; cls='ok';
-    }else{
-      const lost = loseWeight(weight);
-      txt=`Rune ${name} : réussite neutre (+${amount} ${st.key})`+(lost.length?` · ${lost.join(', ')}`:'')+(wasOver?' · over':''); cls='warn';
-    }
-  }else{
-    totals.ko++;
-    const lost = loseWeight(weight);
-    txt=`Rune ${name} : <b>échec</b>`+(lost.length?` · ${lost.join(', ')}`:' (poids absorbé par le puits)'); cls='bad';
-  }
-  logEntries.unshift({txt,cls,p});
+/* =====================================================================
+   ACTIONS
+   ===================================================================== */
+function snapshot(){ return structuredClone({state, log, counts}); }
+function doRune(lineIdx, runeIdx){
+  const line = state.item.lines[lineIdx];
+  const def = RUNES[line.key][runeIdx];
+  const rune = { key:line.key, value:def[1], weight:def[2] };
+  state.item.level = lvlVal();
+  const snap = snapshot();
+  const res = applyRune(state, rune, def[0]);
+  if(!res.outcome) return;                 // rune interdite
+  undoStack.push(snap);
+  state = { item:res.item, reliquat:res.reliquat };
+  counts.n++; counts[res.outcome]++;
+  log.push({ outcome:res.outcome, rune:def[0], key:line.key, value:def[1], odds:res.odds, changes:res.changes, rd:res.reliquatDelta });
   render();
 }
-function resetRun(){
-  puits=0; history=[]; logEntries=[]; totals={runes:0,ok:0,ko:0};
+function undo(){
+  if(!undoStack.length) return;
+  const s = undoStack.pop();
+  state = s.state; log = s.log; counts = s.counts;
+  render();
+}
+function restart(){
+  if(rawLines.length) startItem();
+  else {
+    state.item.lines = state.item.lines.filter(l=>l.min!=null).map(l=>({...l, value:Math.round((l.min+l.max)/2)}));
+    state.reliquat=0; undoStack=[]; log=[]; counts={n:0,SC:0,SN:0,EC:0};
+    render();
+  }
 }
 
-/* ============ RENDER ============ */
-function esc(s){ return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+/* =====================================================================
+   AFFICHAGE
+   ===================================================================== */
+const REGIME = {normal:'jet normal', step:'palier des 80 %', over:'over', exo:'exo', repass:'repassage'};
+const TERM = {base:'base', ratio:'runes déjà passées', quality:'qualité', over:'over', step:'palier +45', lowlevel:'bas niveau'};
+
+function oddsTitle(o, runeName, def){
+  if(o.blocked==='line-cap') return `Rune interdite : la ligne dépasserait son maximum de ${o.limit}`;
+  if(o.blocked==='item-cap') return `Rune interdite : over et exo dépasseraient ${ITEM_CAP} de poids sur l'objet (déjà ${o.load})`;
+  let t = `${runeName} · +${def[1]} · poids ${def[2]}\nSuccès critique ${fmtPct(o.sc)} % · Succès neutre ${fmtPct(o.sn)} % · Échec critique ${fmtPct(o.ec)} %\n${REGIME[o.regime]||''}`;
+  if(o.estimated) t += ' (estimation)';
+  if(o.terms) t += `\nDifficulté ${Math.round(o.difficulty*10)/10} : `+o.terms.filter(x=>Math.abs(x[1])>1e-9).map(x=>`${TERM[x[0]]} ${x[1]>=0&&x[0]!=='base'?'+':''}${Math.round(x[1]*10)/10}`).join(', ');
+  if(o.exoPa) t += '\nExo PA/PM sur l\'objet : le reste de l\'objet compte comme parfait, le SC chute';
+  if(o.half) t += '\nMalus : la rune ne coûte que la moitié de son poids';
+  return t;
+}
+
 function render(){
+  // objet
   const head = $('itemHead');
-  if(item){
+  if(itemInfo){
     head.hidden=false;
-    head.innerHTML=(item.img?`<img src="${esc(item.img)}" alt="">`:'')+`<div><h3>${esc(item.name)}</h3><small>${esc(item.type||'')} · niveau ${item.level??'?'}</small></div>`;
-  }else head.hidden=true;
+    head.innerHTML=(itemInfo.img?`<img src="${esc(itemInfo.img)}" alt="">`:'')+
+      `<div><h3>${esc(itemInfo.name)}</h3><small>${esc(itemInfo.type||'')} · niveau ${itemInfo.level??'?'}</small></div>`;
+  } else head.hidden=true;
 
-  $('kPuits').textContent=Math.round(puits*100)/100;
-  $('kWeight').textContent=Math.round(itemWeight()*10)/10;
-  $('kRunes').textContent=totals.runes;
-  $('kRatio').textContent=totals.ok+' / '+totals.ko;
+  state.item.level = lvlVal();
+  const load = overLoad(state.item.lines);
+  $('kLoad').textContent = (Math.round(load*10)/10)+' / '+ITEM_CAP;
+  $('kLoadBox').classList.toggle('warn', load>ITEM_CAP*0.9);
+  if(document.activeElement!==$('kReliquat')) $('kReliquat').value = state.reliquat;
+  $('kRunes').textContent = counts.n;
+  $('kRatio').innerHTML = `<span class="sc-c">${counts.SC}</span> / <span class="sn-c">${counts.SN}</span> / <span class="ec-c">${counts.EC}</span>`;
 
-  const wrap=$('stats'); wrap.innerHTML='';
-  if(!stats.length){ wrap.innerHTML='<div class="msg">Cherche un objet à gauche, ou ajoute une stat ci-dessous.</div>'; }
-  stats.forEach((s,i)=>{
-    const over = s.max>0 && s.cur>s.max, exo = s.max<=0 && s.cur>0;
-    const pct = s.max>0 ? Math.min(100, Math.max(0,s.cur)/s.max*100) : (s.cur>0?100:0);
-    const div=document.createElement('div'); div.className='stat';
-    const showP = $('chkAuto').checked;
-    const btns=(RUNES[s.key]||[]).map((r,ri)=>{
-      const pp = showP? ` <small>${Math.round(runeChance(s,r)*100)}%</small>`:'';
-      return `<button data-i="${i}" data-r="${ri}" title="+${r[1]} ${s.key} · poids ${r[2]}">${esc(r[0])}${pp}</button>`;
+  // lignes
+  const wrap = $('stats'); wrap.innerHTML='';
+  const lines = state.item.lines;
+  if(!lines.length) wrap.innerHTML='<div class="msg">Charge un objet exemple à gauche, ou ajoute des lignes ci-dessous.</div>';
+  lines.forEach((l,i)=>{
+    const isRange = ranged(l);
+    const over = isRange && l.value>bounds(l)[1], exo = !isRange && l.value>0, neg = l.value<0;
+    const hi = isRange ? bounds(l)[1] : 0;
+    const pct = isRange ? Math.min(100, Math.max(0,l.value)/Math.max(1,hi)*100) : (l.value>0?100:0);
+    const div = document.createElement('div'); div.className='stat';
+    const wTxt = l.weight!=null ? `poids ${Math.round(l.weight*1000)/1000}/pt` : 'poids inconnu';
+    const range = isRange ? `jet <input class="mm" type="number" data-f="min" data-i="${i}" value="${bounds(l)[0]}" aria-label="Jet minimum de ${esc(l.name)}"> à <input class="mm" type="number" data-f="max" data-i="${i}" value="${hi}" aria-label="Jet maximum de ${esc(l.name)}">` : 'exo';
+    const btns = (RUNES[l.key]||[]).map((def,ri)=>{
+      const o = computeOdds(state.item, {key:l.key, value:def[1], weight:def[2]});
+      const title = esc(oddsTitle(o, def[0], def));
+      if(o.blocked) return `<button class="rune" disabled title="${title}"><span class="rn">${esc(def[0])} <small>+${def[1]}</small></span><span class="num">interdite</span></button>`;
+      const bar = `<span class="odds"><i class="sc" style="width:${o.sc}%"></i><i class="sn" style="width:${o.sn}%"></i><i class="ec" style="width:${o.ec}%"></i></span>`;
+      const num = advanced ? `<span class="num"><b class="sc-c">${fmtPct(o.sc)}</b> · <b class="sn-c">${fmtPct(o.sn)}</b> · <b class="ec-c">${fmtPct(o.ec)}</b></span>`
+                           : `<span class="num sc-c">SC ${fmtPct(o.sc)} %</span>`;
+      return `<button class="rune" data-i="${i}" data-r="${ri}" title="${title}"><span class="rn">${esc(def[0])} <small>+${def[1]}</small></span>${bar}${num}</button>`;
     }).join('');
-    div.innerHTML=`
-      <div class="name">${esc(s.key)}<small>${s.max>0?`${s.min}–${s.max}`:'hors jet'} · poids ${wOf(s.key)}/pt</small></div>
-      <div class="bar"><i class="${over?'over':''}" style="width:${pct}%"></i></div>
-      <div class="val ${over?'over':exo?'exo':''}">${s.cur}${s.max>0?` / ${s.max}`:''}${over?' (over)':exo?' (exo)':''}</div>
-      <div class="runes">${btns||'<span class="msg">Pas de rune pour cette stat</span>'}
-        <button data-del="${i}" title="Retirer cette stat" style="margin-left:auto">✕</button></div>`;
+    div.innerHTML = `
+      <div class="top">
+        <div class="name">${esc(l.name)}<small>${range}<span class="wt">${wTxt}</span></small></div>
+        <div class="bar"><i class="${over?'over':exo?'exo':''}" style="width:${pct}%"></i></div>
+        <div class="val ${over?'over':exo?'exo':neg?'neg':''}"><input class="vin" type="number" step="1" data-i="${i}" value="${l.value}" title="Modifier directement le jet" aria-label="Valeur de ${esc(l.name)}">${isRange?` / ${hi}`:''}${over?'<small>over</small>':exo?'<small>exo</small>':''}</div>
+      </div>
+      <div class="runes">${btns||'<span class="msg">Aucune rune connue pour cette stat</span>'}
+        <button class="del" data-del="${i}" title="Retirer cette ligne">✕</button></div>`;
     wrap.appendChild(div);
   });
-  wrap.querySelectorAll('button[data-r]').forEach(b=>b.onclick=()=>applyRune(+b.dataset.i,+b.dataset.r));
-  wrap.querySelectorAll('button[data-del]').forEach(b=>b.onclick=()=>{ stats.splice(+b.dataset.del,1); render(); });
+  wrap.querySelectorAll('input.vin').forEach(inp=>inp.onchange=()=>{
+    const v = parseInt(inp.value,10);
+    if(!Number.isFinite(v)){ render(); return; }
+    undoStack.push(snapshot());
+    state.item.lines[+inp.dataset.i].value = v;
+    render();
+  });
+  wrap.querySelectorAll('input.mm').forEach(inp=>inp.onchange=()=>{
+    const v = parseInt(inp.value,10), l = state.item.lines[+inp.dataset.i];
+    if(!Number.isFinite(v)){ render(); return; }
+    undoStack.push(snapshot());
+    let [lo,hi] = bounds(l);
+    if(inp.dataset.f==='min') lo=v; else hi=v;
+    [lo,hi] = [Math.min(lo,hi), Math.max(lo,hi)];
+    l.min=lo; l.max=hi;
+    const raw = rawLines.find(r=>r.key===l.key); if(raw){ raw.min=lo; raw.max=hi; }
+    render();
+  });
+  wrap.querySelectorAll('button[data-r]').forEach(b=>b.onclick=()=>doRune(+b.dataset.i,+b.dataset.r));
+  wrap.querySelectorAll('button[data-del]').forEach(b=>b.onclick=()=>{ const l=state.item.lines[+b.dataset.del]; state.item.lines.splice(+b.dataset.del,1); rawLines=rawLines.filter(r=>r.key!==l.key); render(); });
 
-  const log=$('log');
-  log.innerHTML = logEntries.length
-    ? logEntries.map(e=>`<div class="${e.cls}">${e.txt} <small style="color:var(--muted)">(${Math.round(e.p*100)}%)</small></div>`).join('')
-    : '<div class="msg">Aucune rune passée.</div>';
+  // sélecteur d'exo : stats absentes de l'objet (PA, PM, Portée d'abord)
+  const present = new Set(lines.map(l=>l.key));
+  const order = ['PA','PM','Portée'];
+  const keys = Object.keys(RUNES).filter(k=>!present.has(k)).sort((a,b)=>{
+    const ia = order.indexOf(a), ib = order.indexOf(b);
+    return (ia<0?9:ia)-(ib<0?9:ib);
+  });
+  const sel = $('addStat'), prev = sel.value;
+  sel.innerHTML = keys.map(k=>`<option>${esc(k)}</option>`).join('');
+  if(keys.includes(prev)) sel.value = prev;
+  $('btnAdd').disabled = !keys.length;
+  $('btnUndo').disabled = !undoStack.length;
+
+  // historique
+  const lg = $('log');
+  if(!log.length){ lg.innerHTML='<div class="msg">Clique sur une rune pour forgemager.</div>'; return; }
+  const items = log.map((e,n)=>{
+    const ch = e.changes.map(c=>`<span class="${c.delta>0?'sc-c':'ec-c'}">${c.delta>0?'+':'−'}${Math.abs(c.delta)} ${esc(c.name)}</span>`).join(', ');
+    const rd = e.rd ? ` · <span class="${e.rd>0?'sn-c':'tiny'}">${e.rd>0?'+':'−'}${Math.abs(e.rd)} reliquat</span>` : '';
+    return `<div class="h"><span class="badge ${e.outcome}">${e.outcome}</span><b>${esc(e.rune)}</b> ${ch?'· '+ch:''}${rd}<br><small>${fmtPct(e.odds.sc)} / ${fmtPct(e.odds.sn)} / ${fmtPct(e.odds.ec)} %</small></div>`;
+  });
+  const top = $('order').value==='top';
+  lg.innerHTML = (top ? items.reverse() : items).join('');
+  lg.scrollTop = top ? 0 : lg.scrollHeight;
 }
 
-/* ============ EVENTS ============ */
-$('btnSearch').onclick=searchItems;
-$('q').addEventListener('keydown',e=>{ if(e.key==='Enter') searchItems(); });
-$('btnLoad').onclick=()=>{ if(rawEffects.length) applyStart(); };
-$('chkAuto').onchange=render;
-$('btnUndo').onclick=()=>{ if(history.length){ restore(history.pop()); render(); } };
-$('btnReset').onclick=()=>{ if(rawEffects.length) applyStart(); else { stats.forEach(s=>s.cur=Math.round((s.min+s.max)/2)); resetRun(); render(); } };
-$('btnAdd').onclick=()=>{
-  const key=$('addStat').value;
-  const min=+$('addMin').value||0, max=+$('addMax').value||0;
-  if(stats.some(s=>s.key===key)) return;
-  stats.push({key,min,max,cur:max>0?Math.round((min+max)/2):0});
+/* =====================================================================
+   ÉVÉNEMENTS
+   ===================================================================== */
+$('example').innerHTML = Object.keys(EXAMPLES).map(k=>`<option>${esc(k)}</option>`).join('');
+$('btnExample').onclick = loadExample;
+$('btnLoad').onclick = ()=>{ if(rawLines.length) startItem(); };
+$('lvl').onchange = render;
+$('btnUndo').onclick = undo;
+$('btnReset').onclick = restart;
+$('btnClearLog').onclick = ()=>{ log=[]; render(); };
+$('order').onchange = render;
+$('kReliquat').onchange = ()=>{ state.reliquat = Math.max(0, +$('kReliquat').value||0); render(); };
+$('modeSimple').onclick = ()=>{ advanced=false; $('modeSimple').classList.add('on'); $('modeAdv').classList.remove('on'); render(); };
+$('modeAdv').onclick   = ()=>{ advanced=true;  $('modeAdv').classList.add('on'); $('modeSimple').classList.remove('on'); render(); };
+$('btnAddLine').onclick = ()=>{
+  const key = $('addStat').value;
+  let min = parseInt($('addMin').value,10), max = parseInt($('addMax').value,10);
+  if(!key || state.item.lines.some(l=>l.key===key) || !Number.isFinite(min)) return;
+  if(!Number.isFinite(max)) max = min;
+  [min,max] = [Math.min(min,max), Math.max(min,max)];
+  const mode = $('startMode').value;
+  state.item.lines.push({ key, name:key, min, max, value:pickValue(min,max,mode), weight:perPoint(key) });
+  rawLines.push({ key, name:key, min, max });
+  $('addMin').value=''; $('addMax').value='';
   render();
 };
-// stat selector
-$('addStat').innerHTML=Object.keys(STATS).map(k=>`<option>${esc(k)}</option>`).join('');
-render();
+$('btnAdd').onclick = ()=>{
+  const key = $('addStat').value;
+  if(!key || state.item.lines.some(l=>l.key===key)) return;
+  state.item.lines.push({ key, name:key, min:null, max:null, value:0, weight:perPoint(key) });
+  render();
+};
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft' && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) undo();
+});
+
+loadExample();
 </script>
 </body>
 </html>
